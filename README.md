@@ -11,3 +11,6 @@ Forwards AWS ELB logs from S3 to logentries via lambda
 
 ## Update function
 If you modified the tokens or the function code, run ```bash deploy.sh``` to update your function.
+
+## Testing
+You can test the function on your local machine with ```python elb_to_logentries.py [-t logentries_token] mybucket path/to/access/log```
