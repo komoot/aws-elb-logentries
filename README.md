@@ -1,6 +1,16 @@
 # aws-elb-logentries
 Forwards AWS ELB logs from S3 to logentries via lambda
 
+Result format:
+
+```
+2015-11-27T05:50:21.770857Z ip=1.2.123.456 t=0.018773 es=200 bs=200 ib=0 ob=245 m=GET /api/users/john_smith "node-superagent/0.18.2"
+
+timestamp, ip, total time, ELB status, backend status, in bytes, out bytes, method, Path, User_Agent
+```
+
+
+
 ## Setup
 1. Enable access log logging for your ELB in you AWS console.
 1. Clone this repository
