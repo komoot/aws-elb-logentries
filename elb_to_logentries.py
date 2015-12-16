@@ -50,8 +50,10 @@ def s3_out(bucket, key, token=None, dummy=False):
                 'url': url,
                 'user_agent': line[12]
                 }
-            msg = "{0} ip={ip} t={5} es={7} bs={8} ib={9} ob={10} m={method} {url} \"{user_agent}\"\n".format(*line, **parsed)
-            s.send(token + msg)
+            msg = "\"{0}\" ip=\"{ip}\" request_time=\"{5}\" elb_status=\"{7}\" backend_status=\"{8}\"" \
+                          " bytes_received=\"{9}\" bytes_sent=\"{10}\" method=\"{method}\" url=\"{url}\"" \
+                          " user_agent=\"{user_agent}\"\n"\
+                        .format(*line, **parsed)
         else:
             s.send(token + "ERROR line too short: " + ' '.join(line) + "\n")
     s.close()  
