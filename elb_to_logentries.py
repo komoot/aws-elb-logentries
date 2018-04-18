@@ -36,7 +36,7 @@ def s3_out(bucket, key, token=None, dummy=False):
     s.connect(('data.logentries.com', 80))	
     object = s3_client.Object(bucket, key)
     body = object.get()["Body"].read()
-    rows = csv.reader(body.splitlines(), delimiter=' ', quotechar='"')
+    rows = csv.reader((line.replace('\0','') for line in body.splitlines()), delimiter=' ', quotechar='"')
     for line in rows:
         # log line format is:
         # timestamp elb client:port backend:port request_processing_time backend_processing_time response_processing_time elb_status_code backend_status_code received_bytes sent_bytes "request" "user_agent" ssl_cipher ssl_protocol
