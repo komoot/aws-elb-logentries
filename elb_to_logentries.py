@@ -4,6 +4,8 @@ import socket
 import boto3
 import csv
 import json
+import zlib
+
 s3_client = boto3.resource('s3')
 
 with open("tokens.json", 'r') as f:
@@ -35,28 +37,54 @@ def s3_out(bucket, key, token=None, dummy=False):
 
     s.connect(('data.logentries.com', 80))	
     object = s3_client.Object(bucket, key)
-    body = object.get()["Body"].read()
+
+    if(key.endswith("log.gz")):
+        compressed = object.get()["Body"].read()
+        body = zlib.decompress(compressed, 15+32).decode('utf-8')
+        elbV2 = True
+    else:
+        body = object.get()["Body"].read()
+        elbV2 = False
+
     rows = csv.reader((line.replace('\0','') for line in body.splitlines()), delimiter=' ', quotechar='"')
     for line in rows:
         # log line format is:
         # timestamp elb client:port backend:port request_processing_time backend_processing_time response_processing_time elb_status_code backend_status_code received_bytes sent_bytes "request" "user_agent" ssl_cipher ssl_protocol
-        if len(line) > 12:
-            request = line[11].split(' ')
-            idx = request[1].find('/', 9)
-            url = request[1][idx:]
-            parsed = {
-                'ip': line[2].split(':')[0],
-                'method': request[0],
-                'url': url,
-                'user_agent': line[12]
+        if elbV2:
+            if len(line) > 23:
+                request = line[12].split(' ')
+                idx = request[1].find('/', 9)
+                url = request[1][idx:]
+                parsed = {
+                    'ip': line[3].split(':')[0],
+                    'method': request[0],
+                    'url': url,
+                    'user_agent': line[13]
                 }
-            msg = "\"{0}\" ip=\"{ip}\" request_time=\"{5}\" elb_status=\"{7}\" backend_status=\"{8}\"" \
-                          " bytes_received=\"{9}\" bytes_sent=\"{10}\" method=\"{method}\" url=\"{url}\"" \
-                          " user_agent=\"{user_agent}\"\n"\
-                        .format(*line, **parsed)
+                msg = "\"{1}\" ip=\"{ip}\" request_time=\"{6}\" elb_status=\"{8}\" backend_status=\"{9}\"" \
+                      " bytes_received=\"{10}\" bytes_sent=\"{11}\" method=\"{method}\" url=\"{url}\"" \
+                      " user_agent=\"{user_agent}\"\n" \
+                    .format(*line, **parsed)
+            else:
+                s.send(token + "ERROR line too short: " + ' '.join(line) + "\n")
         else:
-            s.send(token + "ERROR line too short: " + ' '.join(line) + "\n")
-    s.close()  
+            if len(line) > 12:
+                request = line[11].split(' ')
+                idx = request[1].find('/', 9)
+                url = request[1][idx:]
+                parsed = {
+                    'ip': line[2].split(':')[0],
+                    'method': request[0],
+                    'url': url,
+                    'user_agent': line[12]
+                    }
+                msg = "\"{0}\" ip=\"{ip}\" request_time=\"{5}\" elb_status=\"{7}\" backend_status=\"{8}\"" \
+                              " bytes_received=\"{9}\" bytes_sent=\"{10}\" method=\"{method}\" url=\"{url}\"" \
+                              " user_agent=\"{user_agent}\"\n"\
+                            .format(*line, **parsed)
+            else:
+                s.send(token + "ERROR line too short: " + ' '.join(line) + "\n")
+    s.close()
 
 class Dummy:
     def connect(self, dummy):
